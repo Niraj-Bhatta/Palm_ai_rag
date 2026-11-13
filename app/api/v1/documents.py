@@ -1,10 +1,13 @@
 
 from typing import Literal
-
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-
 from app.services.extraction_service import extract_text
 from app.services.chunking_service import chunk_text
+from starlette.concurrency import run_in_threadpool
+from app.services.embedding_service import generate_document_embeddings
+from uuid import uuid4
+from app.services.vector_store_service import get_vector_store
+
 
 router = APIRouter(
     prefix="/documents",
@@ -47,16 +50,39 @@ async def upload_document(
             strategy=chunking_strategy,
         )
 
+        embeddings = await run_in_threadpool(
+            generate_document_embeddings,
+            chunks,
+        )
+
+        document_id = str(uuid4())
+
+        vector_store = await run_in_threadpool(get_vector_store)
+
+        stored_count = await run_in_threadpool(
+            vector_store.store_chunks,
+            chunks,
+            embeddings,
+            document_id,
+            file.filename,
+            chunking_strategy,
+        )
+
     except ValueError as error:
         raise HTTPException(
             status_code=400,
             detail=str(error),
         ) from error
 
+
     return {
-        "filename": file.filename,
-        "chunking_strategy": chunking_strategy,
-        "character_count": len(extracted_text),
-        "chunk_count": len(chunks),
-        "chunks": chunks,
-    }
+    "document_id": document_id,
+    "filename": file.filename,
+    "message": "Document ingested and stored successfully.",
+    "chunking_strategy": chunking_strategy,
+    "character_count": len(extracted_text),
+    "chunk_count": len(chunks),
+    "embedding_count": len(embeddings),
+    "embedding_dimensions": len(embeddings[0]) if embeddings else 0,
+    "stored_vectors": stored_count,
+}

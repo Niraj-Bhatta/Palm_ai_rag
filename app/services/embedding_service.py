@@ -1,6 +1,6 @@
 
 from sentence_transformers import SentenceTransformer
-
+from functools import lru_cache
 
 class EmbeddingService:
     def __init__(
@@ -48,3 +48,22 @@ class EmbeddingService:
         )
 
         return embedding.tolist()
+
+
+#ensures that the model is initialized once and reused on subsequent requests.
+@lru_cache(maxsize=1)
+def get_embedding_service() -> EmbeddingService:
+    """
+    Load the embedding model once and reuse it.
+    """
+    return EmbeddingService()
+
+
+def generate_document_embeddings(
+    texts: list[str],
+) -> list[list[float]]:
+    """
+    Generate embeddings using the cached model.
+    """
+    service = get_embedding_service()
+    return service.generate_embeddings(texts)

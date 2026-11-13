@@ -23,3 +23,5 @@ google-genai
 # Testing
 pytest
 httpx
+
+python-dotenv

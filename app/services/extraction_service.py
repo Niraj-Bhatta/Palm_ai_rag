@@ -1,5 +1,5 @@
 
-import fitz
+import pymupdf
 
 
 def extract_text(file_content: bytes, filename: str) -> str:
@@ -18,7 +18,7 @@ def extract_text(file_content: bytes, filename: str) -> str:
 
     if extension == "pdf":
         try:
-            document = fitz.open(
+            document = pymupdf.open(
                 stream=file_content,
                 filetype="pdf",
             )
