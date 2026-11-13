@@ -1,7 +1,10 @@
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
-from app.services.extraction_service import extract_text
+from typing import Literal
 
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+
+from app.services.extraction_service import extract_text
+from app.services.chunking_service import chunk_text
 
 router = APIRouter(
     prefix="/documents",
@@ -12,7 +15,8 @@ router = APIRouter(
 @router.post("/upload")
 async def upload_document(
     file: UploadFile = File(...),
-) -> dict[str, str]:
+    chunking_strategy: Literal["recursive", "token"] = Form("recursive"),
+) -> dict:
 
     if not file.filename:
         raise HTTPException(
@@ -22,7 +26,7 @@ async def upload_document(
 
     allowed_extensions = {".pdf", ".txt"}
 
-    extension = "."+ file.filename.rsplit(".", 1)[-1].lower()
+    extension = "." + file.filename.rsplit(".", 1)[-1].lower()
 
     if extension not in allowed_extensions:
         raise HTTPException(
@@ -35,18 +39,24 @@ async def upload_document(
     try:
         extracted_text = extract_text(
             file_content=file_content,
-            filename = file.filename,
+            filename=file.filename,
         )
 
-    except  ValueError as error:
+        chunks = chunk_text(
+            text=extracted_text,
+            strategy=chunking_strategy,
+        )
+
+    except ValueError as error:
         raise HTTPException(
             status_code=400,
-            detail = str(error),
+            detail=str(error),
         ) from error
-    
+
     return {
         "filename": file.filename,
-        "message": "Document text extracted successfully.",
-        "character_count": str(len(extracted_text)),
-        "extracted_text": extracted_text,
+        "chunking_strategy": chunking_strategy,
+        "character_count": len(extracted_text),
+        "chunk_count": len(chunks),
+        "chunks": chunks,
     }
