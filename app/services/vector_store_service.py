@@ -6,11 +6,11 @@ from uuid import uuid4
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient, models
 
-
 load_dotenv()
 
 
 class VectorStoreService:
+
     def __init__(self) -> None:
         url = os.getenv("QDRANT_URL")
         api_key = os.getenv("QDRANT_API_KEY")
@@ -31,11 +31,10 @@ class VectorStoreService:
         )
 
         self.create_collection()
+        self.create_payload_indexes()
 
     def create_collection(self) -> None:
-        """
-        Create the collection if it does not already exist.
-        """
+        """Create the collection if it does not already exist."""
 
         if not self.client.collection_exists(
             collection_name=self.collection_name
@@ -56,9 +55,7 @@ class VectorStoreService:
         filename: str,
         strategy: str,
     ) -> int:
-        """
-        Store document chunks and their embeddings in Qdrant.
-        """
+        """Store document chunks and their embeddings in Qdrant."""
 
         if len(chunks) != len(embeddings):
             raise ValueError(
@@ -93,10 +90,58 @@ class VectorStoreService:
 
         return len(points)
 
+    def search_chunks(
+        self,
+        query_embedding: list[float],
+        limit: int = 5,
+        document_id: str | None = None,
+    ) -> list[dict]:
+        """Search Qdrant for relevant document chunks."""
+
+        query_filter = None
+
+        if document_id:
+            query_filter = models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key="document_id",
+                        match=models.MatchValue(value=document_id),
+                    )
+                ]
+            )
+
+        results = self.client.query_points(
+            collection_name=self.collection_name,
+            query=query_embedding,
+            query_filter=query_filter,
+            limit=limit,
+            with_payload=True,
+        )
+
+        retrieved_chunks = []
+
+        for point in results.points:
+            payload = point.payload or {}
+
+            retrieved_chunks.append({
+                "text": payload.get("text", ""),
+                "document_id": payload.get("document_id"),
+                "filename": payload.get("filename"),
+                "chunk_index": payload.get("chunk_index"),
+                "score": point.score,
+            })
+
+        return retrieved_chunks
+
+    def create_payload_indexes(self) -> None:
+        self.client.create_payload_index(
+            collection_name=self.collection_name,
+            field_name="document_id",
+            field_schema=models.PayloadSchemaType.KEYWORD,
+            wait=True,
+        )
 
 @lru_cache(maxsize=1)
 def get_vector_store() -> VectorStoreService:
-    """
-    Reuse one Qdrant client throughout the application.
-    """
+    """Reuse one Qdrant client throughout the application."""
     return VectorStoreService()
