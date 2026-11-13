@@ -1,0 +1,25 @@
+
+fastapi
+uvicorn[standard]
+pydantic-settings
+python-multipart
+
+# Document processing
+pymupdf
+langchain-text-splitters
+tiktoken
+
+# Embeddings and vector database
+sentence-transformers
+qdrant-client
+
+# Database and memory
+sqlalchemy
+redis
+
+# LLM
+google-genai
+
+# Testing
+pytest
+httpx

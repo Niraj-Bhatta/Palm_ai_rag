@@ -1,0 +1,41 @@
+.venv# Virtual environment
+.venv/
+venv/
+env/
+
+# Secrets (never commit these)
+.env
+.env.*
+!.env.example
+
+# Python cache and build files
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Testing and tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local databases and uploaded files
+*.db
+*.sqlite
+*.sqlite3
+uploads/
+data/
+
+# Local vector store / model caches
+qdrant_storage/
+.cache/
+models/
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
