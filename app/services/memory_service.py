@@ -59,3 +59,45 @@ class ConversationMemory:
 
         # Automatically expire inactive conversations after 24 hours.
         self.client.expire(key, 86400)
+
+
+
+    def get_booking_state(
+        self,
+        conversation_id: str,
+    ) -> dict | None:
+        """Retrieve pending booking information from Redis."""
+
+        key = f"booking:{conversation_id}"
+
+        state = self.client.get(key)
+
+        if state is None:
+            return None
+
+        return json.loads(state)
+
+    def save_booking_state(
+        self,
+        conversation_id: str,
+        state: dict,
+    ) -> None:
+        """Save pending booking information in Redis."""
+
+        key = f"booking:{conversation_id}"
+
+        self.client.set(
+            key,
+            json.dumps(state),
+            ex=86400,
+        )
+
+    def clear_booking_state(
+        self,
+        conversation_id: str,
+    ) -> None:
+        """Remove booking information after completion."""
+
+        key = f"booking:{conversation_id}"
+
+        self.client.delete(key)
