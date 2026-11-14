@@ -5,6 +5,11 @@ from fastapi import APIRouter, HTTPException
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.rag_service import answer_question
 
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
+
+from app.db.database import get_db
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
@@ -14,7 +19,10 @@ router = APIRouter(
 
 
 @router.post("/", response_model=ChatResponse)
-def chat(request: ChatRequest) -> ChatResponse:
+def chat(
+    request: ChatRequest,
+    db: Session = Depends(get_db),
+) -> ChatResponse:
 
     try:
         result = answer_question(
@@ -22,6 +30,7 @@ def chat(request: ChatRequest) -> ChatResponse:
             limit=request.limit,
             document_id=request.document_id,
             conversation_id=request.conversation_id,
+            db=db,
         )
 
         return ChatResponse(**result)
