@@ -1,33 +1,51 @@
 
 from app.services.retrieval_service import retrieve_relevant_chunks
 from app.services.llm_service import get_llm_service
+from app.services.memory_service import (
+    get_redis_client,
+    ConversationMemory,
+)
 
 
 def answer_question(
     question: str,
     limit: int = 5,
     document_id: str | None = None,
+    conversation_id: str = "default",
 ) -> dict:
 
     if not question.strip():
         raise ValueError("Question cannot be empty.")
 
-    # Step 1: Retrieve relevant document chunks
+    # 1. Initialize conversation memory.
+    redis_client = get_redis_client()
+    memory = ConversationMemory(redis_client)
+
+    # 2. Retrieve previous conversation messages.
+    history = memory.get_history(
+        conversation_id=conversation_id,
+        limit=10,
+    )
+
+    # 3. Retrieve relevant document chunks.
     retrieved_chunks = retrieve_relevant_chunks(
         question=question,
         limit=limit,
         document_id=document_id,
     )
 
-    # Step 2: Handle cases where no chunks are retrieved
     if not retrieved_chunks:
+        answer = "I couldn't find relevant information in the uploaded documents."
+
+        memory.add_message(conversation_id, "user", question)
+        memory.add_message(conversation_id, "assistant", answer)
+
         return {
-            "answer": "I couldn't find relevant information in the uploaded documents.",
+            "answer": answer,
             "sources": [],
             "retrieved_count": 0,
         }
 
-    # Step 3: Format retrieved chunks into context
     context_parts = []
     sources = []
 
@@ -54,15 +72,19 @@ Content:
 
     context = "\n---\n".join(context_parts)
 
-    # Step 4: Generate an answer using Gemini
+    # 4. Generate an answer using document context and chat history.
     llm = get_llm_service()
 
     answer = llm.generate_answer(
         question=question,
         context=context,
+        history=history,
     )
 
-    # Step 5: Return answer and source references
+    # 5. Save the latest conversation messages.
+    memory.add_message(conversation_id, "user", question)
+    memory.add_message(conversation_id, "assistant", answer)
+
     return {
         "answer": answer,
         "sources": sources,

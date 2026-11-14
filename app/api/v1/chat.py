@@ -21,6 +21,7 @@ def chat(request: ChatRequest) -> ChatResponse:
             question=request.question,
             limit=request.limit,
             document_id=request.document_id,
+            conversation_id=request.conversation_id,
         )
 
         return ChatResponse(**result)

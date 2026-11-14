@@ -9,6 +9,14 @@ class ChatRequest(BaseModel):
         description="Question about the uploaded documents",
     )
 
+
+    conversation_id: str = Field(
+    ...,
+    min_length=1,
+    max_length=100,
+    description="Unique identifier for the conversation",
+)
+
     document_id: str | None = None
 
     limit: int = Field(default=5, ge=1, le=20)
